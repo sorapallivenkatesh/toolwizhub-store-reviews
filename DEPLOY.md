@@ -129,12 +129,12 @@ aws acm request-certificate \
   --validation-method DNS --region ap-south-1
 ```
 
-Get the validation CNAME:
+Get the validation CNAME (captures the ARN into `$ARN` for the later steps):
 
 ```bash
-aws acm list-certificates --region ap-south-1 \
-  --query "CertificateSummaryList[?DomainName=='api.store-reviews.toolwizhub.com'].CertificateArn" --output text
-aws acm describe-certificate --region ap-south-1 --certificate-arn <ARN> \
+ARN=$(aws acm list-certificates --region ap-south-1 \
+  --query "CertificateSummaryList[?DomainName=='api.store-reviews.toolwizhub.com'].CertificateArn" --output text)
+aws acm describe-certificate --region ap-south-1 --certificate-arn "$ARN" \
   --query "Certificate.DomainValidationOptions[].ResourceRecord"
 ```
 
@@ -149,23 +149,30 @@ Add it in Cloudflare (`toolwizhub.com` zone → DNS → Add record):
 - **Proxy:** **DNS only (grey cloud)** — a proxied record breaks validation
 - **Save**, then wait for **Issued** (a few minutes, up to ~30):
   ```bash
-  aws acm describe-certificate --region ap-south-1 --certificate-arn <ARN> \
+  aws acm describe-certificate --region ap-south-1 --certificate-arn "$ARN" \
     --query "Certificate.Status" --output text     # PENDING_VALIDATION → ISSUED
   ```
 
 ### 2b. Create the API Gateway custom domain + mapping (AWS — API Gateway)
 
+Reuses `$ARN` from 2a; captures the API id into `$API_ID`:
+
 ```bash
+# create the regional custom domain bound to the cert
 aws apigatewayv2 create-domain-name --region ap-south-1 \
   --domain-name api.store-reviews.toolwizhub.com \
-  --domain-name-configurations CertificateArn=<ACM_ARN>,EndpointType=REGIONAL,SecurityPolicy=TLS_1_2
-aws apigatewayv2 get-apis --region ap-south-1 \
-  --query "Items[?Name=='toolwizhub-store-reviews'].ApiId" --output text
+  --domain-name-configurations CertificateArn="$ARN",EndpointType=REGIONAL,SecurityPolicy=TLS_1_2
+
+# find the HTTP API id and map it (stage $default, empty path)
+API_ID=$(aws apigatewayv2 get-apis --region ap-south-1 \
+  --query "Items[?Name=='toolwizhub-store-reviews'].ApiId" --output text)
 aws apigatewayv2 create-api-mapping --region ap-south-1 \
-  --domain-name api.store-reviews.toolwizhub.com --api-id <ApiId> --stage '$default'
+  --domain-name api.store-reviews.toolwizhub.com --api-id "$API_ID" --stage '$default'
+
+# the d-xxxx target to point Cloudflare at (step 2c)
 aws apigatewayv2 get-domain-name --region ap-south-1 \
   --domain-name api.store-reviews.toolwizhub.com \
-  --query "DomainNameConfigurations[0].ApiGatewayDomainName" --output text   # the d-xxxx target
+  --query "DomainNameConfigurations[0].ApiGatewayDomainName" --output text
 ```
 
 (Console equivalent: API Gateway → Custom domain names → Create → Regional → pick the ACM cert →
@@ -186,7 +193,7 @@ TLS handshake errors.
 ### 2d. Verify
 
 ```bash
-curl -s "https://api.store-reviews.toolwizhub.com/reviews?store=play&id=com.whatsapp&limit=5" | head -c 300; echo
+curl -s "https://api.store-reviews.toolwizhub.com/reviews?store=play&id=social.hunch.app&country=in&limit=5" | head -c 300; echo
 ```
 
 > **Frontend config:** `site/config.js` already targets `https://api.store-reviews.toolwizhub.com`
