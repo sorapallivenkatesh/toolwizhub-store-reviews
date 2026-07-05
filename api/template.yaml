@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: StoreReviews API — fetch & normalize App Store + Play Store reviews (Python, serverless).
+
+Parameters:
+  AllowOrigin:
+    Type: String
+    Default: "https://store-reviews.toolwizhub.com"
+    Description: CORS origin allowed to call the API.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Timeout: 25
+    Architectures: [arm64]
+
+Resources:
+  ReviewsApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref AllowOrigin
+          - "http://localhost:8090"
+        AllowMethods: [GET, OPTIONS]
+        AllowHeaders: [Content-Type]
+      Throttle:
+        BurstLimit: 20
+        RateLimit: 10
+
+  ReviewsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: reviews.handler
+      CodeUri: .
+      Description: Fetch App Store / Play Store reviews, normalized + cached.
+      Environment:
+        Variables:
+          ALLOW_ORIGIN: !Ref AllowOrigin
+          LOG_LEVEL: INFO
+      Events:
+        Get:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReviewsApi
+            Path: /reviews
+            Method: GET
+
+Outputs:
+  ApiUrl:
+    Description: Base URL of the StoreReviews API
+    Value: !Sub "https://${ReviewsApi}.execute-api.${AWS::Region}.amazonaws.com"
