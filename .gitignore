@@ -1,0 +1,14 @@
+.DS_Store
+*.log
+node_modules/
+.claude/
+CLAUDE.md
+
+# Python / AWS SAM
+__pycache__/
+*.py[cod]
+.venv/
+api/.venv/
+api/.aws-sam/
+samconfig.toml
+.env

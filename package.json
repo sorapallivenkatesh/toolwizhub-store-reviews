@@ -1,0 +1,14 @@
+{
+  "name": "toolwizhub-store-reviews",
+  "private": true,
+  "type": "module",
+  "description": "StoreReviews — privacy-first App Store & Play Store review triage. Fetch, categorize, prioritize & export reviews.",
+  "scripts": {
+    "api:setup": "cd api && python3 -m venv .venv && .venv/bin/pip install -q --upgrade pip && .venv/bin/pip install -q -r requirements.txt && echo 'api venv ready'",
+    "api": "cd api && { [ -x .venv/bin/python ] || { python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt; }; } && .venv/bin/python dev.py",
+    "site": "python3 -m http.server 8090 --directory site",
+    "dev": "trap 'kill 0' SIGINT EXIT; (cd api && { [ -x .venv/bin/python ] || { python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt; }; } && .venv/bin/python dev.py) & python3 -m http.server 8090 --directory site & wait",
+    "api:build": "cd api && sam build",
+    "api:deploy": "cd api && sam build && sam deploy"
+  }
+}
