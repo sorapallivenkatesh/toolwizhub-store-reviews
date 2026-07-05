@@ -25,9 +25,9 @@ Resources:
           - "http://localhost:8090"
         AllowMethods: [GET, OPTIONS]
         AllowHeaders: [Content-Type]
-      Throttle:
-        BurstLimit: 20
-        RateLimit: 10
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
 
   ReviewsFunction:
     Type: AWS::Serverless::Function
