@@ -62,6 +62,11 @@ splash();
 /* ── fetch flow ───────────────────────────────────── */
 $("#storetoggle").addEventListener("click", (e) => { const b = e.target.closest(".st"); if (b) setStore(b.dataset.store); });
 els.country.addEventListener("change", syncCountryLabel);
+els.appInput.addEventListener("input", () => {
+  if (state.store !== "appstore") return;            // Play country comes from the dropdown only
+  const c = parseCountry(els.appInput.value);         // e.g. apps.apple.com/de/app/… → "de"
+  if (c && c !== els.country.value) { els.country.value = c; syncCountryLabel(); }
+});
 els.form.addEventListener("submit", (e) => { e.preventDefault(); run(els.appInput.value, els.country.value); });
 $("#samples").addEventListener("click", (e) => {
   const b = e.target.closest(".chipbtn"); if (!b) return;
@@ -79,9 +84,10 @@ async function run(input, country) {
   } else {
     id = parseAppId(input);
     if (!id) { toast("Paste a valid App Store link or numeric app ID."); return; }
-    ctry = parseCountry(input) || country || "us";
-    els.country.value = ctry;
-    syncCountryLabel();
+    // Dropdown selection wins. A pasted URL's country is applied to the dropdown
+    // on input (see appInput listener), not re-parsed here — so switching country
+    // after pasting a URL is respected instead of being overridden.
+    ctry = country || "us";
   }
   els.intro.hidden = true; els.wb.hidden = true; els.loading.hidden = false;
   els.loadingText.textContent = "Fetching reviews…";
